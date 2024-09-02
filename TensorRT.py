@@ -4,8 +4,8 @@ import tensorrt as trt
 import pycuda.driver as cuda
 import pycuda.autoinit
 
-# Assuming `model` is your PyTorch model
-model = CAIN(training=False, depth=3)  # Example model
+
+model = CAIN(training=False, depth=3)  
 model.eval()
 
 # Apply dynamic quantization
