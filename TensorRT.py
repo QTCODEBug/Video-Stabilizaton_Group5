@@ -3,6 +3,7 @@ import torch.quantization
 import tensorrt as trt
 import pycuda.driver as cuda
 import pycuda.autoinit
+import onnxruntime
 
 
 model = CAIN(training=False, depth=3)  
@@ -16,7 +17,7 @@ quantized_model = torch.quantization.quantize_dynamic(
 # Save the quantized model
 torch.save(quantized_model.state_dict(), "quantized_model.pth")
 #Convert the Quantized Model to ONNX
-# Đầu vào giả cho mô hình CAIN
+# Đầu vào cho mô hình CAIN
 dummy_input_cain1 = torch.randn(1, 3, 256, 256).cuda()  # Điều chỉnh kích thước nếu cần
 dummy_input_cain2 = torch.randn(1, 3, 256, 256).cuda()  # Đầu vào thứ hai cho CAIN
 
@@ -29,11 +30,9 @@ torch.onnx.export(
     input_names=['input1', 'input2'],
     output_names=['output']
 )
-print('Mô hình CAIN đã được xuất sang định dạng ONNX.')
 
 # Đầu vào giả cho mô hình ResNet
-dummy_input_resnet = torch.randn(1, 15, 256, 256).cuda()  # Điều chỉnh kích thước nếu cần
-
+dummy_input_resnet = torch.randn(1, 15, 256, 256).cuda()  
 # Xuất mô hình ResNet sang ONNX
 torch.onnx.export(
     resnet,
@@ -43,9 +42,19 @@ torch.onnx.export(
     input_names=['input'],
     output_names=['output']
 )
-print('Mô hình ResNet đã được xuất sang định dạng ONNX.')
 
 #trtexec --onnx=quantized_model.onnx --saveEngine=quantized_model.trt --fp16 (down to fp32->fp16)
 trtexec --onnx=quantized_model.onnx --saveEngine=quantized_model.trt --fp16
+
+# Kiểm tra mô hình CAIN
+ort_session_cain = onnxruntime.InferenceSession("cain_model.onnx")
+outputs_cain = ort_session_cain.run(None, {'input1': dummy_input_cain1.cpu().numpy(), 'input2': dummy_input_cain2.cpu().numpy()})
+print('Đầu ra mô hình CAIN từ ONNX Runtime:', outputs_cain)
+
+# Kiểm tra mô hình ResNet
+ort_session_resnet = onnxruntime.InferenceSession("resnet_model.onnx")
+outputs_resnet = ort_session_resnet.run(None, {'input': dummy_input_resnet.cpu().numpy()})
+print('Đầu ra mô hình ResNet từ ONNX Runtime:', outputs_resnet)
+
 
 
